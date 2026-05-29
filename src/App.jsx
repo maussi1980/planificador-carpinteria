@@ -766,24 +766,26 @@ export default function App(){
     </div>}
 
     {/* ── MODALES ── */}
-    {modal&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:"1rem"}}>
-      <div style={{background:"var(--color-background-primary)",border:"0.5px solid var(--color-border-secondary)",borderRadius:"var(--border-radius-lg)",padding:"1.5rem",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto"}}>
+    {modal&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:9999,padding:"1rem"}}>
+      <div style={{background:"#ffffff",color:"#111111",border:"1px solid #dddddd",borderRadius:12,padding:"1.5rem",width:"100%",maxWidth:480,maxHeight:"85vh",overflowY:"auto",boxShadow:"0 8px 40px rgba(0,0,0,0.25)"}}>
         {modal.tipo==="mover"&&<>
-          <div style={{fontWeight:500,fontSize:16,marginBottom:4}}>Mover inicio: {modal.job.nombre}</div>
-          <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:14}}>El resto de los trabajos se recalcula automáticamente.</div>
-          <div style={{marginBottom:14}}><label style={S.lbl}>Nueva fecha de inicio</label>
-            <input type="date" defaultValue={modal.nuevaFecha} onChange={e=>onCambioFechaMover(e.target.value)} style={{width:"100%",boxSizing:"border-box"}}/></div>
+          <div style={{fontWeight:500,fontSize:16,marginBottom:4,color:"#111"}}>Mover inicio: {modal.job.nombre}</div>
+          <div style={{fontSize:13,color:"#666",marginBottom:14}}>El resto de los trabajos se recalcula automáticamente.</div>
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:13,color:"#666",display:"block",marginBottom:4}}>Nueva fecha de inicio</label>
+            <input type="date" defaultValue={modal.nuevaFecha} onChange={e=>onCambioFechaMover(e.target.value)} style={{width:"100%",boxSizing:"border-box",fontSize:14,padding:"8px",border:"1px solid #ccc",borderRadius:6}}/>
+          </div>
           <ImpactoPanel imp={modal.impacto} schedDes={modal.schedDes}/>
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-            <button style={S.btn} onClick={()=>setModal(null)}>Cancelar</button>
+            <button style={{...S.btn,color:"#333",borderColor:"#ccc"}} onClick={()=>setModal(null)}>Cancelar</button>
             <button style={S.btnG} onClick={confirmarMover}>Confirmar</button>
           </div>
         </>}
         {modal.tipo==="reorden"&&<>
-          <div style={{fontWeight:500,fontSize:16,marginBottom:8}}>Revisar impacto del reorden</div>
+          <div style={{fontWeight:500,fontSize:16,marginBottom:8,color:"#111"}}>Revisar impacto del reorden</div>
           <ImpactoPanel imp={modal.impacto} schedDes={modal.schedDes||simSchedule(modal.arr.filter(j=>!j.archivado),excepciones)}/>
           <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
-            <button style={S.btn} onClick={()=>setModal(null)}>Cancelar</button>
+            <button style={{...S.btn,color:"#333",borderColor:"#ccc"}} onClick={()=>setModal(null)}>Cancelar</button>
             <button style={S.btnG} onClick={confirmarReorden}>Aceptar de todos modos</button>
           </div>
         </>}
