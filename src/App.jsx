@@ -207,56 +207,100 @@ export default function App(){
     </div>
   );
 
-  // EtapaCierre: tarjeta de avance de una etapa
+  // Fechas estimadas por etapa de cada trabajo (para mostrar en el desglose)
+  const etapasFechas=useMemo(()=>{
+    const mapa={}; // jobId -> { etapaNombre: {inicio, fin} }
+    schedule.forEach(j=>{
+      mapa[j.id]={};
+      let cur=new Date(j.inicio);let restDia=horasDelDia(cur,excepciones);
+      j.etapas.forEach(e=>{
+        const p=pend(e);
+        if(p<=0){mapa[j.id][e.nombre]=null;return;}
+        const ini=new Date(cur);
+        let h=p;
+        while(h>0.001){const usado=Math.min(h,restDia);h=parseFloat((h-usado).toFixed(2));restDia=parseFloat((restDia-usado).toFixed(2));if(restDia<=0.001&&h>0.001){cur=addDays(cur,1);while(horasDelDia(cur,excepciones)===0)cur=addDays(cur,1);restDia=horasDelDia(cur,excepciones);}}
+        mapa[j.id][e.nombre]={inicio:ini,fin:new Date(cur)};
+        if(restDia<=0.001){cur=addDays(cur,1);while(horasDelDia(cur,excepciones)===0)cur=addDays(cur,1);restDia=horasDelDia(cur,excepciones);}
+      });
+    });
+    return mapa;
+  },[schedule,excepciones]);
+
+  // TarjetaCierre: proyecto colapsable con todas sus etapas
   const TarjetaCierre=({j})=>{
-    const ea=etapaActual(j);
-    const [modo,setModo]=useState(null); // null | 'parcial' | 'masHoras'
+    const [abierto,setAbierto]=useState(false);
+    const [editEtapa,setEditEtapa]=useState(null); // nombre de etapa en edición
+    const [modoEd,setModoEd]=useState(null); // 'parcial' | 'masHoras'
     const [val,setVal]=useState("");
-    if(!ea){
-      return <div style={{...S.card,borderLeft:`3px solid ${j.color}`,opacity:0.6}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><span style={{fontWeight:500}}>{j.nombre}</span> <span style={{fontSize:12,color:"var(--color-text-secondary)"}}>({j.cliente})</span></div>
-          <span style={{fontSize:12,color:"var(--color-text-success)",fontWeight:500}}>✅ Todo completado</span>
-        </div>
-      </div>;
-    }
     const sched_j=schedule.find(s=>s.id===j.id);
+    const hechas=j.etapas.reduce((s,e)=>s+num(e.hechas),0);
+    const plan=totalHoras(j);
+    const pctAvance=plan>0?Math.round((hechas/plan)*100):0;
+    const completo=totalPend(j)===0;
+    const fechas=etapasFechas[j.id]||{};
+
+    const cerrarEd=()=>{setEditEtapa(null);setModoEd(null);setVal("");};
+
     return(
-      <div style={{...S.card,borderLeft:`3px solid ${j.color}`}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-          <div><div style={{fontWeight:500,fontSize:15}}>{j.nombre}</div><div style={{fontSize:12,color:"var(--color-text-secondary)"}}>{j.cliente}</div></div>
-          {j.fechaEntrega&&<span style={{fontSize:12,fontWeight:500,color:sched_j?.tarde?"var(--color-text-danger)":"var(--color-text-success)"}}>{sched_j?.tarde?"⚠️ va tarde":"✅ a tiempo"}</span>}
+      <div style={{...S.card,borderLeft:`3px solid ${j.color}`,opacity:completo?0.65:1,padding:0,overflow:"hidden"}}>
+        {/* header clickable */}
+        <div onClick={()=>setAbierto(a=>!a)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0.9rem 1.1rem",cursor:"pointer"}}>
+          <div style={{display:"flex",gap:10,alignItems:"center",flex:1,minWidth:0}}>
+            <span style={{fontSize:18,color:"var(--color-text-secondary)",width:18,flexShrink:0}}>{abierto?"−":"+"}</span>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:500,fontSize:15}}>{j.nombre}</div>
+              <div style={{fontSize:12,color:"var(--color-text-secondary)"}}>{j.cliente} · {completo?"✅ completado":`${totalPend(j)}h pendientes`}{hechas>0&&!completo&&` · ${pctAvance}% hecho`}</div>
+            </div>
+          </div>
+          {j.fechaEntrega&&<span style={{fontSize:12,fontWeight:500,flexShrink:0,marginLeft:8,color:sched_j?.tarde?"var(--color-text-danger)":"var(--color-text-success)"}}>{sched_j?.tarde?"⚠️ tarde":"✅ a tiempo"}</span>}
         </div>
-        <div style={{fontSize:13,marginBottom:10}}>
-          <span style={{color:"var(--color-text-secondary)"}}>Etapa actual: </span>
-          <strong>{ea.nombre}</strong>
-          <span style={{color:"var(--color-text-secondary)"}}> · {pend(ea)}h pendientes{num(ea.hechas)>0&&` (${num(ea.hechas)}h ya hechas)`}</span>
-        </div>
-        {modo===null&&(
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <button style={S.btnG} onClick={()=>completarEtapa(j.id,ea.nombre)}>✓ Terminé esta etapa</button>
-            <button style={S.btn} onClick={()=>{setModo("parcial");setVal("");}}>Avancé en parte</button>
-            <button style={S.btn} onClick={()=>{setModo("masHoras");setVal(num(ea.horas));}}>Me llevó más horas</button>
-            <button style={S.btn} onClick={()=>pedirMover(j.id,nextWork(addDays(new Date(),1),excepciones))}>No pude hoy →</button>
-          </div>
-        )}
-        {modo==="parcial"&&(
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            <span style={{fontSize:13}}>¿Cuántas horas avancé hoy?</span>
-            <input type="number" min={0.5} step={0.5} max={pend(ea)} value={val} onChange={e=>setVal(e.target.value)} placeholder="h" style={{width:70}} autoFocus/>
-            <button style={S.btnG} onClick={()=>{if(num(val)>0)avanzarHoras(j.id,ea.nombre,val);setModo(null);}}>Registrar</button>
-            <button style={S.btn} onClick={()=>setModo(null)}>Cancelar</button>
-          </div>
-        )}
-        {modo==="masHoras"&&(
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            <span style={{fontSize:13}}>Esta etapa en realidad lleva:</span>
-            <input type="number" min={num(ea.hechas)} step={0.5} value={val} onChange={e=>setVal(e.target.value)} style={{width:70}} autoFocus/>
-            <span style={{fontSize:13,color:"var(--color-text-secondary)"}}>h totales (eran {num(ea.horas)}h)</span>
-            <button style={S.btnG} onClick={()=>{ajustarHorasReales(j.id,ea.nombre,val);setModo(null);}}>Actualizar</button>
-            <button style={S.btn} onClick={()=>setModo(null)}>Cancelar</button>
-          </div>
-        )}
+        {/* barra de avance */}
+        {hechas>0&&<div style={{height:3,background:"var(--color-background-secondary)",margin:"0 1.1rem 0.6rem"}}><div style={{width:pctAvance+"%",height:"100%",background:"#1D9E75"}}/></div>}
+
+        {/* etapas expandidas */}
+        {abierto&&<div style={{padding:"0 1.1rem 0.9rem"}}>
+          {j.etapas.map((e,i)=>{
+            const p=pend(e);const hecho=p<=0;const enParte=num(e.hechas)>0&&!hecho;
+            const f=fechas[e.nombre];const enEd=editEtapa===e.nombre;
+            return(
+              <div key={i} style={{padding:"8px 0",borderTop:i>0?"0.5px solid var(--color-border-tertiary)":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <span style={{fontSize:15,flexShrink:0}}>{hecho?"✅":enParte?"🔵":"⬜"}</span>
+                  <div style={{flex:1,minWidth:100}}>
+                    <div style={{fontSize:13,fontWeight:hecho?400:500,textDecoration:hecho?"line-through":"none",color:hecho?"var(--color-text-secondary)":"var(--color-text-primary)"}}>{e.nombre}</div>
+                    <div style={{fontSize:11,color:"var(--color-text-secondary)"}}>
+                      {hecho?`${num(e.horas)}h completadas`:`${num(e.hechas)}/${num(e.horas)}h${f?` · ${fmtShort(f.inicio)}`:""}`}
+                    </div>
+                  </div>
+                  {!hecho&&!enEd&&<div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button style={{...S.btn,padding:"3px 10px",fontSize:12,color:"#1D9E75",borderColor:"#1D9E75"}} onClick={()=>completarEtapa(j.id,e.nombre)}>✓ Listo</button>
+                    <button style={{...S.btn,padding:"3px 10px",fontSize:12}} onClick={()=>{setEditEtapa(e.nombre);setModoEd("parcial");setVal("");}}>+ horas</button>
+                  </div>}
+                  {hecho&&<button style={{...S.btn,padding:"2px 8px",fontSize:11}} onClick={()=>setTrabajos(t=>t.map(x=>x.id!==j.id?x:{...x,etapas:x.etapas.map(et=>et.nombre===e.nombre?{...et,hechas:0}:et)}))}>deshacer</button>}
+                </div>
+                {/* edición inline */}
+                {enEd&&modoEd==="parcial"&&<div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,paddingLeft:24,flexWrap:"wrap"}}>
+                  <span style={{fontSize:12}}>Horas hechas hoy:</span>
+                  <input type="number" min={0.5} step={0.5} max={p} value={val} onChange={ev=>setVal(ev.target.value)} placeholder="h" style={{width:64}} autoFocus/>
+                  <button style={{...S.btnG,padding:"3px 10px",fontSize:12}} onClick={()=>{if(num(val)>0)avanzarHoras(j.id,e.nombre,val);cerrarEd();}}>Guardar</button>
+                  <button style={{...S.btn,padding:"3px 8px",fontSize:12}} onClick={()=>setModoEd("masHoras")}>llevó más horas</button>
+                  <button style={{...S.btn,padding:"3px 8px",fontSize:12}} onClick={cerrarEd}>✕</button>
+                </div>}
+                {enEd&&modoEd==="masHoras"&&<div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,paddingLeft:24,flexWrap:"wrap"}}>
+                  <span style={{fontSize:12}}>Total real de la etapa:</span>
+                  <input type="number" min={num(e.hechas)} step={0.5} value={val||num(e.horas)} onChange={ev=>setVal(ev.target.value)} style={{width:64}} autoFocus/>
+                  <span style={{fontSize:12,color:"var(--color-text-secondary)"}}>h (eran {num(e.horas)}h)</span>
+                  <button style={{...S.btnG,padding:"3px 10px",fontSize:12}} onClick={()=>{ajustarHorasReales(j.id,e.nombre,val||num(e.horas));cerrarEd();}}>Actualizar</button>
+                  <button style={{...S.btn,padding:"3px 8px",fontSize:12}} onClick={cerrarEd}>✕</button>
+                </div>}
+              </div>
+            );
+          })}
+          {/* acción posponer todo el trabajo */}
+          {!completo&&<div style={{marginTop:10,paddingTop:8,borderTop:"0.5px solid var(--color-border-tertiary)"}}>
+            <button style={{...S.btn,padding:"4px 12px",fontSize:12}} onClick={()=>pedirMover(j.id,nextWork(addDays(new Date(),1),excepciones))}>📆 No pude avanzar — posponer este trabajo</button>
+          </div>}
+        </div>}
       </div>
     );
   };
