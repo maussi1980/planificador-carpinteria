@@ -229,8 +229,7 @@ export default function App(){
   // TarjetaCierre: proyecto colapsable con todas sus etapas
   const TarjetaCierre=({j})=>{
     const [abierto,setAbierto]=useState(false);
-    const [editEtapa,setEditEtapa]=useState(null); // nombre de etapa en edición
-    const [modoEd,setModoEd]=useState(null); // 'parcial' | 'masHoras'
+    const [editEtapa,setEditEtapa]=useState(null);
     const [val,setVal]=useState("");
     const sched_j=schedule.find(s=>s.id===j.id);
     const hechas=j.etapas.reduce((s,e)=>s+num(e.hechas),0);
@@ -239,66 +238,53 @@ export default function App(){
     const completo=totalPend(j)===0;
     const fechas=etapasFechas[j.id]||{};
 
-    const cerrarEd=()=>{setEditEtapa(null);setModoEd(null);setVal("");};
-
     return(
-      <div style={{...S.card,borderLeft:`3px solid ${j.color}`,opacity:completo?0.65:1,padding:0,overflow:"hidden"}}>
+      <div style={{...S.card,borderLeft:`4px solid ${j.color}`,opacity:completo?0.65:1,padding:0,overflow:"hidden",marginBottom:14}}>
         {/* header clickable */}
-        <div onClick={()=>setAbierto(a=>!a)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"0.9rem 1.1rem",cursor:"pointer"}}>
-          <div style={{display:"flex",gap:10,alignItems:"center",flex:1,minWidth:0}}>
-            <span style={{fontSize:18,color:"var(--color-text-secondary)",width:18,flexShrink:0}}>{abierto?"−":"+"}</span>
+        <div onClick={()=>setAbierto(a=>!a)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"1rem 1.25rem",cursor:"pointer"}}>
+          <div style={{display:"flex",gap:14,alignItems:"center",flex:1,minWidth:0}}>
+            <span style={{fontSize:22,color:"var(--color-text-secondary)",width:20,flexShrink:0,lineHeight:1}}>{abierto?"−":"+"}</span>
             <div style={{minWidth:0}}>
-              <div style={{fontWeight:500,fontSize:15}}>{j.nombre}</div>
-              <div style={{fontSize:12,color:"var(--color-text-secondary)"}}>{j.cliente} · {completo?"✅ completado":`${totalPend(j)}h pendientes`}{hechas>0&&!completo&&` · ${pctAvance}% hecho`}</div>
+              <div style={{fontWeight:600,fontSize:16,marginBottom:2}}>{j.nombre}</div>
+              <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>{j.cliente} · {completo?"✅ completado":`${totalPend(j)}h pendientes`}{hechas>0&&!completo&&` · ${pctAvance}%`}</div>
             </div>
           </div>
-          {j.fechaEntrega&&<span style={{fontSize:12,fontWeight:500,flexShrink:0,marginLeft:8,color:sched_j?.tarde?"var(--color-text-danger)":"var(--color-text-success)"}}>{sched_j?.tarde?"⚠️ tarde":"✅ a tiempo"}</span>}
+          {j.fechaEntrega&&<span style={{fontSize:13,fontWeight:500,flexShrink:0,marginLeft:10,padding:"4px 10px",borderRadius:6,background:sched_j?.tarde?"var(--color-background-danger)":"var(--color-background-success)",color:sched_j?.tarde?"var(--color-text-danger)":"var(--color-text-success)"}}>{sched_j?.tarde?"⚠️ tarde":"✅ a tiempo"}</span>}
         </div>
-        {/* barra de avance */}
-        {hechas>0&&<div style={{height:3,background:"var(--color-background-secondary)",margin:"0 1.1rem 0.6rem"}}><div style={{width:pctAvance+"%",height:"100%",background:"#1D9E75"}}/></div>}
+        {hechas>0&&<div style={{height:4,background:"var(--color-background-secondary)",margin:"0 1.25rem 0.8rem"}}><div style={{width:pctAvance+"%",height:"100%",background:"#1D9E75",borderRadius:2}}/></div>}
 
-        {/* etapas expandidas */}
-        {abierto&&<div style={{padding:"0 1.1rem 0.9rem"}}>
+        {abierto&&<div style={{padding:"0.5rem 1.25rem 1.1rem",borderTop:"0.5px solid var(--color-border-tertiary)"}}>
           {j.etapas.map((e,i)=>{
             const p=pend(e);const hecho=p<=0;const enParte=num(e.hechas)>0&&!hecho;
             const f=fechas[e.nombre];const enEd=editEtapa===e.nombre;
             return(
-              <div key={i} style={{padding:"8px 0",borderTop:i>0?"0.5px solid var(--color-border-tertiary)":"none"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-                  <span style={{fontSize:15,flexShrink:0}}>{hecho?"✅":enParte?"🔵":"⬜"}</span>
-                  <div style={{flex:1,minWidth:100}}>
-                    <div style={{fontSize:13,fontWeight:hecho?400:500,textDecoration:hecho?"line-through":"none",color:hecho?"var(--color-text-secondary)":"var(--color-text-primary)"}}>{e.nombre}</div>
-                    <div style={{fontSize:11,color:"var(--color-text-secondary)"}}>
-                      {hecho?`${num(e.horas)}h completadas`:`${num(e.hechas)}/${num(e.horas)}h${f?` · ${fmtShort(f.inicio)}`:""}`}
+              <div key={i} style={{padding:"14px 0",borderBottom:i<j.etapas.length-1?"0.5px solid var(--color-border-tertiary)":"none"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                  <span style={{fontSize:18,flexShrink:0,width:22,textAlign:"center"}}>{hecho?"✅":enParte?"🔵":"⬜"}</span>
+                  <div style={{flex:1,minWidth:120}}>
+                    <div style={{fontSize:15,fontWeight:hecho?400:500,textDecoration:hecho?"line-through":"none",color:hecho?"var(--color-text-secondary)":"var(--color-text-primary)",marginBottom:3}}>{e.nombre}</div>
+                    <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>
+                      {hecho?`${num(e.horas)}h completadas`:`${num(e.hechas)} de ${num(e.horas)}h${f?` · estimado ${fmtShort(f.inicio)}`:""}`}
                     </div>
                   </div>
-                  {!hecho&&!enEd&&<div style={{display:"flex",gap:6,flexShrink:0}}>
-                    <button style={{...S.btn,padding:"3px 10px",fontSize:12,color:"#1D9E75",borderColor:"#1D9E75"}} onClick={()=>completarEtapa(j.id,e.nombre)}>✓ Listo</button>
-                    <button style={{...S.btn,padding:"3px 10px",fontSize:12}} onClick={()=>{setEditEtapa(e.nombre);setModoEd("parcial");setVal("");}}>+ horas</button>
+                  {!hecho&&!enEd&&<div style={{display:"flex",gap:8,flexShrink:0}}>
+                    <button style={{...S.btn,padding:"6px 14px",fontSize:13}} onClick={()=>{setEditEtapa(e.nombre);setVal("");}}>Cargar horas</button>
+                    <button style={{...S.btnG,padding:"6px 14px",fontSize:13}} onClick={()=>completarEtapa(j.id,e.nombre)}>✓ Terminada</button>
                   </div>}
-                  {hecho&&<button style={{...S.btn,padding:"2px 8px",fontSize:11}} onClick={()=>setTrabajos(t=>t.map(x=>x.id!==j.id?x:{...x,etapas:x.etapas.map(et=>et.nombre===e.nombre?{...et,hechas:0}:et)}))}>deshacer</button>}
+                  {hecho&&<button style={{...S.btn,padding:"5px 12px",fontSize:12,flexShrink:0}} onClick={()=>setTrabajos(t=>t.map(x=>x.id!==j.id?x:{...x,etapas:x.etapas.map(et=>et.nombre===e.nombre?{...et,hechas:0}:et)}))}>Deshacer</button>}
                 </div>
-                {/* edición inline */}
-                {enEd&&modoEd==="parcial"&&<div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,paddingLeft:24,flexWrap:"wrap"}}>
-                  <span style={{fontSize:12}}>Horas hechas hoy:</span>
-                  <input type="number" min={0.5} step={0.5} max={p} value={val} onChange={ev=>setVal(ev.target.value)} placeholder="h" style={{width:64}} autoFocus/>
-                  <button style={{...S.btnG,padding:"3px 10px",fontSize:12}} onClick={()=>{if(num(val)>0)avanzarHoras(j.id,e.nombre,val);cerrarEd();}}>Guardar</button>
-                  <button style={{...S.btn,padding:"3px 8px",fontSize:12}} onClick={()=>setModoEd("masHoras")}>llevó más horas</button>
-                  <button style={{...S.btn,padding:"3px 8px",fontSize:12}} onClick={cerrarEd}>✕</button>
-                </div>}
-                {enEd&&modoEd==="masHoras"&&<div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,paddingLeft:24,flexWrap:"wrap"}}>
-                  <span style={{fontSize:12}}>Total real de la etapa:</span>
-                  <input type="number" min={num(e.hechas)} step={0.5} value={val||num(e.horas)} onChange={ev=>setVal(ev.target.value)} style={{width:64}} autoFocus/>
-                  <span style={{fontSize:12,color:"var(--color-text-secondary)"}}>h (eran {num(e.horas)}h)</span>
-                  <button style={{...S.btnG,padding:"3px 10px",fontSize:12}} onClick={()=>{ajustarHorasReales(j.id,e.nombre,val||num(e.horas));cerrarEd();}}>Actualizar</button>
-                  <button style={{...S.btn,padding:"3px 8px",fontSize:12}} onClick={cerrarEd}>✕</button>
+                {enEd&&<div style={{display:"flex",gap:10,alignItems:"center",marginTop:12,paddingLeft:34,flexWrap:"wrap"}}>
+                  <span style={{fontSize:14}}>¿Cuántas horas trabajé?</span>
+                  <input type="number" min={0.5} step={0.5} value={val} onChange={ev=>setVal(ev.target.value)} placeholder="h" style={{width:80,fontSize:15,padding:"7px 10px"}} autoFocus
+                    onKeyDown={ev=>{if(ev.key==="Enter"&&num(val)>0){avanzarHoras(j.id,e.nombre,val);setEditEtapa(null);setVal("");}if(ev.key==="Escape"){setEditEtapa(null);setVal("");}}}/>
+                  <button style={{...S.btnG,padding:"7px 16px",fontSize:13}} onClick={()=>{if(num(val)>0)avanzarHoras(j.id,e.nombre,val);setEditEtapa(null);setVal("");}}>Guardar</button>
+                  <button style={{...S.btn,padding:"7px 14px",fontSize:13}} onClick={()=>{setEditEtapa(null);setVal("");}}>Cancelar</button>
                 </div>}
               </div>
             );
           })}
-          {/* acción posponer todo el trabajo */}
-          {!completo&&<div style={{marginTop:10,paddingTop:8,borderTop:"0.5px solid var(--color-border-tertiary)"}}>
-            <button style={{...S.btn,padding:"4px 12px",fontSize:12}} onClick={()=>pedirMover(j.id,nextWork(addDays(new Date(),1),excepciones))}>📆 No pude avanzar — posponer este trabajo</button>
+          {!completo&&<div style={{marginTop:14,paddingTop:12,borderTop:"0.5px solid var(--color-border-tertiary)"}}>
+            <button style={{...S.btn,padding:"7px 14px",fontSize:13}} onClick={()=>pedirMover(j.id,nextWork(addDays(new Date(),1),excepciones))}>📆 No pude avanzar — posponer este trabajo</button>
           </div>}
         </div>}
       </div>
